@@ -155,6 +155,11 @@ class NotionClient:
         }
         
         response = requests.post(url, headers=self.headers, json=data)
+        
+        if response.status_code not in [200, 201]:
+            error_detail = response.text[:500]
+            raise Exception(f"HTTP {response.status_code}: {error_detail}")
+        
         response.raise_for_status()
         return response.json()
     
@@ -165,17 +170,28 @@ class NotionClient:
         """
         synced = 0
         created = 0
+        errors = []
+        
+        print(f"   📤 Enviando {len(developers)} registros a Notion...")
         
         for username, metrics in developers.items():
             try:
                 # Siempre crear nueva página (nunca actualizar)
-                self.create_page(metrics, record_date)
+                result = self.create_page(metrics, record_date)
                 created += 1
                 synced += 1
+                print(f"      ✓ {username}: registrado (ID: {result.get('id', 'N/A')[:8]}...)")
             except Exception as e:
-                print(f"Error registrando {username}: {e}")
+                error_msg = f"{username}: {str(e)}"
+                errors.append(error_msg)
+                print(f"      ✗ {error_msg}")
         
-        return {'synced': synced, 'created': created}
+        if errors:
+            print(f"   ⚠️  Errores encontrados ({len(errors)}):")
+            for err in errors[:5]:  # Mostrar primeros 5 errores
+                print(f"      - {err}")
+        
+        return {'synced': synced, 'created': created, 'errors': len(errors)}
     
     def sync_developer_metrics(self, developers: Dict[str, Any], period: str):
         """
