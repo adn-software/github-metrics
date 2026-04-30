@@ -24,6 +24,7 @@ def collect_all_commits(github: GitHubClient, since: datetime, until: datetime) 
     print(f"📁 Obteniendo repositorios de la organización '{github.org}'...")
     repos = github.get_org_repositories()
     print(f"   Encontrados {len(repos)} repositorios")
+    print(f"   🔍 Buscando commits desde {since.isoformat()} hasta {until.isoformat()}")
     
     all_commits = []
     
@@ -129,8 +130,18 @@ def main():
     try:
         all_commits = collect_all_commits(github, since, until)
         print(f"\n📊 Total commits recolectados hoy: {len(all_commits)}")
+        
+        # Debug: mostrar algunos commits encontrados
+        if all_commits:
+            print(f"   🔍 Primer commit: {all_commits[0].get('commit', {}).get('message', 'N/A')[:50]}...")
+            print(f"   👤 Autor: {all_commits[0].get('author', {}).get('login', 'N/A')}")
+        else:
+            print("   ⚠️  No se encontraron commits en el rango de fechas especificado")
+            
     except Exception as e:
         print(f"❌ Error al obtener datos de GitHub: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
     
     # Calcular métricas de desarrolladores con actividad hoy
