@@ -34,7 +34,8 @@ class NotionClient:
                 "Lineas Agregadas ": {"number": {"format": "number"}},
                 "Lineas Eliminadas ": {"number": {"format": "number"}},
                 "Lineas Total": {"number": {"format": "number"}},
-                "Repos": {"number": {"format": "number"}},
+                "Repos Hoy": {"number": {"format": "number"}},
+                "Total Repos Asignados": {"number": {"format": "number"}},
                 "Último Commit": {"date": {}},
                 "Dias Inactivo": {"number": {"format": "number"}},
                 "Estado ": {"select": {
@@ -139,7 +140,8 @@ class NotionClient:
                 "Lineas Agregadas ": {"number": metrics.lines_added},
                 "Lineas Eliminadas ": {"number": metrics.lines_deleted},
                 "Lineas Total": {"number": metrics.lines_added + metrics.lines_deleted},
-                "Repos": {"number": len(metrics.repos_contributed)},
+                "Repos Hoy": {"number": len(metrics.repos_contributed)},
+                "Total Repos Asignados": {"number": metrics.total_assigned_repos},
                 "Último Commit": {
                     "date": {"start": metrics.last_commit_date.isoformat() if metrics.last_commit_date else datetime.now().isoformat()}
                 },

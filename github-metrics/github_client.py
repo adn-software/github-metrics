@@ -125,3 +125,50 @@ class GitHubClient:
         response = requests.get(url, headers=self.headers)
         response.raise_for_status()
         return response.json()
+    
+    def get_user_repositories(self, username: str) -> List[Dict]:
+        """Obtiene todos los repositorios donde un usuario es colaborador/miembro"""
+        repos = []
+        page = 1
+        
+        while True:
+            url = f'{self.base_url}/users/{username}/repos'
+            params = {'page': page, 'per_page': 100, 'type': 'all'}
+            response = requests.get(url, headers=self.headers, params=params)
+            
+            if response.status_code == 404:
+                break
+            response.raise_for_status()
+            data = response.json()
+            
+            if not data:
+                break
+            
+            # Filtrar solo repos de la organización configurada
+            for repo in data:
+                if repo.get('owner', {}).get('login') == self.org:
+                    repos.append(repo)
+            
+            page += 1
+        
+        return repos
+    
+    def get_org_member_repos(self, username: str) -> List[str]:
+        """Obtiene lista de nombres de repos donde el usuario es colaborador en la org"""
+        # Obtener todos los repos de la org y verificar si el usuario es contributor
+        all_org_repos = self.get_org_repositories()
+        user_repos = []
+        
+        for repo in all_org_repos:
+            repo_name = repo['name']
+            try:
+                contributors = self.get_contributors(repo_name)
+                for contributor in contributors:
+                    if contributor.get('login') == username:
+                        user_repos.append(repo_name)
+                        break
+            except Exception:
+                # Si no hay acceso a contributors, intentar verificar con commits
+                continue
+        
+        return user_repos

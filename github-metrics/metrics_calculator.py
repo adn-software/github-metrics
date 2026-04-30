@@ -9,7 +9,8 @@ class DeveloperMetrics:
         self.commits = 0
         self.lines_added = 0
         self.lines_deleted = 0
-        self.repos_contributed = set()
+        self.repos_contributed = set()  # Repos donde hizo commits HOY
+        self.total_assigned_repos = 0   # Total de repos donde es miembro/colaborador
         self.commit_dates = []
         self.last_commit_date = None
         self.first_commit_date = None

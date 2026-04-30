@@ -53,36 +53,52 @@ def collect_all_commits(github: GitHubClient, since: datetime, until: datetime) 
     
     return all_commits
 
+def get_developer_assigned_repos(github: GitHubClient, developers: dict) -> dict:
+    """Obtiene el total de repos asignados para cada desarrollador"""
+    print("\n📋 Obteniendo información de repos asignados por desarrollador...")
+    assigned_repos = {}
+    
+    for username in developers.keys():
+        try:
+            repos = github.get_org_member_repos(username)
+            assigned_repos[username] = len(repos)
+            print(f"   • {username}: {len(repos)} repos asignados")
+        except Exception as e:
+            print(f"   ⚠️ Error obteniendo repos de {username}: {e}")
+            assigned_repos[username] = 0
+    
+    return assigned_repos
+
 def generate_report(developers: dict, calc: MetricsCalculator, report_date: str):
-    """Genera reporte gerencial en consola"""
+    """Genera reporte gerencial en consola con detalles por día"""
     print("\n" + "="*70)
-    print("📊 REPORTE GERENCIAL - MÉTRICAS DE DESARROLLADORES")
+    print("📊 REPORTE GERENCIAL - MÉTRICAS DIARIAS DE DESARROLLADORES")
     print("="*70)
     
     # Estadísticas generales
     stats = calc.get_summary_stats(developers)
     print(f"\n📈 Estadísticas del Equipo - Día {report_date}:")
-    print(f"   • Total desarrolladores activos: {stats['total_developers']}")
-    print(f"   • Total commits: {stats['total_commits']}")
-    print(f"   • Total líneas agregadas: {stats['total_lines_added']:,}")
-    print(f"   • Total líneas eliminadas: {stats['total_lines_deleted']:,}")
-    print(f"   • Total líneas modificadas: {stats['total_lines_changed']:,}")
-    print(f"   • Promedio commits por dev: {stats['avg_commits_per_dev']:.1f}")
+    print(f"   • Total desarrolladores: {stats['total_developers']}")
+    print(f"   • Total commits hoy: {stats['total_commits']}")
+    print(f"   • Total líneas agregadas hoy: {stats['total_lines_added']:,}")
+    print(f"   • Total líneas eliminadas hoy: {stats['total_lines_deleted']:,}")
+    print(f"   • Total líneas modificadas hoy: {stats['total_lines_changed']:,}")
     
-    # Ranking por commits
-    print(f"\n🏆 TOP DESARROLLADORES POR COMMITS (HOY):")
+    # Ranking detallado por desarrollador
+    print(f"\n🏆 DETALLE POR DESARROLLADOR (HOY):")
     ranking = calc.get_ranking_by_commits(developers)
-    for i, dev in enumerate(ranking[:10], 1):
-        print(f"   {i}. {dev.name}: {dev.commits} commits | {dev.lines_added + dev.lines_deleted:,} líneas")
-    
-    # Ranking por líneas de código
-    print(f"\n💻 TOP DESARROLLADORES POR LÍNEAS DE CÓDIGO (HOY):")
-    ranking_lines = calc.get_ranking_by_lines(developers)
-    for i, dev in enumerate(ranking_lines[:10], 1):
-        print(f"   {i}. {dev.name}: {dev.lines_added + dev.lines_deleted:,} líneas ({dev.lines_added:,}+ / {dev.lines_deleted:,}-)")
+    for i, dev in enumerate(ranking[:15], 1):
+        print(f"\n   {i}. {dev.name} (@{dev.username})")
+        print(f"      📦 Repos trabajados hoy: {len(dev.repos_contributed)}")
+        print(f"      📝 Commits hoy: {dev.commits}")
+        print(f"      ➕ Líneas agregadas hoy: {dev.lines_added:,}")
+        print(f"      ➖ Líneas eliminadas hoy: {dev.lines_deleted:,}")
+        print(f"      📊 Total líneas modificadas: {dev.lines_added + dev.lines_deleted:,}")
+        print(f"      🏛️  Total repos asignados: {dev.total_assigned_repos}")
+        if dev.last_commit_date:
+            print(f"      🕐 Último commit: {dev.last_commit_date.strftime('%H:%M:%S')}")
     
     print(f"\n✅ Reporte del día {report_date} completado.")
-    
     print("\n" + "="*70)
 
 def main():
@@ -116,7 +132,13 @@ def main():
     
     # Calcular métricas
     developers = calc.calculate_metrics(all_commits)
-    print(f"👥 Desarrolladores encontrados: {len(developers)}")
+    print(f"👥 Desarrolladores con actividad hoy: {len(developers)}")
+    
+    # Obtener información de repos asignados para cada desarrollador
+    assigned_repos = get_developer_assigned_repos(github, developers)
+    for username, total_repos in assigned_repos.items():
+        if username in developers:
+            developers[username].total_assigned_repos = total_repos
     
     if not developers:
         print("⚠️  No se encontraron desarrolladores con actividad en el período.")
