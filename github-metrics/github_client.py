@@ -172,3 +172,58 @@ class GitHubClient:
                 continue
         
         return user_repos
+    
+    def get_all_org_members(self) -> Dict[str, str]:
+        """Obtiene todos los miembros de la organización {username: name}"""
+        members = {}
+        page = 1
+        
+        # Intentar obtener miembros de la organización
+        while True:
+            url = f'{self.base_url}/orgs/{self.org}/members'
+            params = {'page': page, 'per_page': 100}
+            response = requests.get(url, headers=self.headers, params=params)
+            
+            if response.status_code == 404 or response.status_code == 403:
+                # Si no es org o no tenemos permisos, obtener de contributors de repos
+                break
+            
+            response.raise_for_status()
+            data = response.json()
+            
+            if not data:
+                break
+            
+            for member in data:
+                username = member.get('login')
+                if username:
+                    members[username] = username  # Por defecto, nombre = username
+            
+            page += 1
+        
+        # Si no obtuvimos miembros de la API de org, sacarlos de contributors de repos
+        if not members:
+            all_repos = self.get_org_repositories()
+            for repo in all_repos:
+                try:
+                    contributors = self.get_contributors(repo['name'])
+                    for contributor in contributors:
+                        username = contributor.get('login')
+                        if username:
+                            members[username] = username
+                except Exception:
+                    continue
+        
+        # Obtener nombres reales de los perfiles
+        for username in list(members.keys()):
+            try:
+                url = f'{self.base_url}/users/{username}'
+                response = requests.get(url, headers=self.headers)
+                if response.status_code == 200:
+                    user_data = response.json()
+                    name = user_data.get('name') or user_data.get('login')
+                    members[username] = name
+            except Exception:
+                pass
+        
+        return members

@@ -7,7 +7,7 @@ Sincroniza métricas de GitHub a Notion para control de equipo.
 import sys
 from datetime import datetime, timedelta
 from github_client import GitHubClient
-from metrics_calculator import MetricsCalculator
+from metrics_calculator import MetricsCalculator, DeveloperMetrics
 from notion_client import NotionClient
 from config import Config
 
@@ -96,7 +96,9 @@ def generate_report(developers: dict, calc: MetricsCalculator, report_date: str)
         print(f"      📊 Total líneas modificadas: {dev.lines_added + dev.lines_deleted:,}")
         print(f"      🏛️  Total repos asignados: {dev.total_assigned_repos}")
         if dev.last_commit_date:
-            print(f"      🕐 Último commit: {dev.last_commit_date.strftime('%H:%M:%S')}")
+            print(f"      🕐 Último commit hoy: {dev.last_commit_date.strftime('%H:%M:%S')}")
+        else:
+            print(f"      ⚪ Sin actividad hoy")
     
     print(f"\n✅ Reporte del día {report_date} completado.")
     print("\n" + "="*70)
@@ -130,19 +132,47 @@ def main():
         print(f"❌ Error al obtener datos de GitHub: {e}")
         sys.exit(1)
     
-    # Calcular métricas
-    developers = calc.calculate_metrics(all_commits)
-    print(f"👥 Desarrolladores con actividad hoy: {len(developers)}")
+    # Calcular métricas de desarrolladores con actividad hoy
+    active_developers = calc.calculate_metrics(all_commits)
+    print(f"👥 Desarrolladores con actividad hoy: {len(active_developers)}")
     
-    # Obtener información de repos asignados para cada desarrollador
-    assigned_repos = get_developer_assigned_repos(github, developers)
-    for username, total_repos in assigned_repos.items():
-        if username in developers:
-            developers[username].total_assigned_repos = total_repos
+    # Obtener TODOS los miembros del equipo (para crear historial completo)
+    print("\n📋 Obteniendo todos los miembros del equipo...")
+    all_members = github.get_all_org_members()
+    print(f"   Total miembros en el equipo: {len(all_members)}")
     
-    if not developers:
-        print("⚠️  No se encontraron desarrolladores con actividad en el período.")
+    # Crear DeveloperMetrics para todos los miembros (incluyendo los sin actividad hoy)
+    all_developers = {}
+    
+    for username, name in all_members.items():
+        if username in active_developers:
+            # Usar datos reales de actividad
+            all_developers[username] = active_developers[username]
+        else:
+            # Crear métricas con 0 para miembros sin actividad hoy
+            dev = DeveloperMetrics(username=username, name=name)
+            dev.commits = 0
+            dev.lines_added = 0
+            dev.lines_deleted = 0
+            dev.last_commit_date = None
+            all_developers[username] = dev
+    
+    # Obtener información de repos asignados para todos los desarrolladores
+    print("\n📋 Obteniendo información de repos asignados...")
+    for username, dev in all_developers.items():
+        try:
+            repos = github.get_org_member_repos(username)
+            dev.total_assigned_repos = len(repos)
+            print(f"   • {username}: {len(repos)} repos asignados")
+        except Exception as e:
+            print(f"   ⚠️ Error obteniendo repos de {username}: {e}")
+            dev.total_assigned_repos = 0
+    
+    if not all_developers:
+        print("⚠️  No se encontraron desarrolladores en el equipo.")
         sys.exit(0)
+    
+    developers = all_developers  # Usar todos para el reporte y registro
     
     # Generar reporte en consola
     generate_report(developers, calc, today)
