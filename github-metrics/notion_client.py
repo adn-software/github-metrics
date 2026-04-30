@@ -147,10 +147,7 @@ class NotionClient:
                 },
                 "Dias Inactivo": {"number": metrics.days_since_last_commit if metrics.days_since_last_commit != float('inf') else None},
                 "Estado ": {"select": {"name": status}},
-                "Score ": {"number": round(metrics.activity_score, 2)},
-                "Fecha Registro": {
-                    "date": {"start": datetime.now().isoformat()}
-                }
+                "Score ": {"number": round(metrics.activity_score, 2)}
             }
         }
         
