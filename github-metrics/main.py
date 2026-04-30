@@ -12,9 +12,10 @@ from notion_client import NotionClient
 from config import Config
 
 def get_today_range():
-    """Retorna el rango de fechas para el día actual (desde 00:00 hasta ahora)"""
-    now = datetime.now()
+    """Retorna el rango de fechas para el día actual en UTC (GitHub usa UTC)"""
+    now = datetime.utcnow()
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    print(f"   📅 Rango de búsqueda: {start_of_day.isoformat()} a {now.isoformat()} (UTC)")
     return start_of_day, now
 
 def collect_all_commits(github: GitHubClient, since: datetime, until: datetime) -> list:
