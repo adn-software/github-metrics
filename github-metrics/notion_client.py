@@ -151,6 +151,9 @@ class NotionClient:
             }
         }
         
+        # Debug: mostrar datos que se envían
+        print(f"         [DEBUG] Enviando: commits={metrics.commits}, repos_hoy={len(metrics.repos_contributed)}, total_repos={metrics.total_assigned_repos}")
+        
         response = requests.post(url, headers=self.headers, json=data)
         
         if response.status_code not in [200, 201]:
