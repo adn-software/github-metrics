@@ -29,7 +29,7 @@ class NotionClient:
             "properties": {
                 "Desarrollador": {"title": {}},
                 "Username ": {"rich_text": {}},
-                "Periodo": {"rich_text": {}},
+                "Fecha": {"date": {}},
                 "Commits": {"number": {"format": "number"}},
                 "Lineas Agregadas ": {"number": {"format": "number"}},
                 "Lineas Eliminadas ": {"number": {"format": "number"}},
@@ -40,12 +40,13 @@ class NotionClient:
                 "Estado ": {"select": {
                     "options": [
                         {"name": "Activo", "color": "green"},
+                        {"name": "Sin Actividad", "color": "gray"},
                         {"name": "Inactivo", "color": "red"},
                         {"name": "Alerta", "color": "yellow"}
                     ]
                 }},
                 "Score ": {"number": {"format": "number"}},
-                "Fecha Actualización": {"date": {}}
+                "Fecha Registro": {"date": {}}
             }
         }
         response = requests.post(url, headers=self.headers, json=data)
@@ -112,15 +113,13 @@ class NotionClient:
         
         return None
     
-    def create_page(self, metrics: Any, period: str) -> Dict:
-        """Crea nueva página con métricas de desarrollador"""
+    def create_page(self, metrics: Any, record_date: str) -> Dict:
+        """Crea nueva página con métricas de desarrollador para un día específico"""
         url = f'{self.base_url}/pages'
         
-        # Determinar estado
-        if metrics.days_since_last_commit > 7:
-            status = "Inactivo"
-        elif metrics.days_since_last_commit > 3:
-            status = "Alerta"
+        # Determinar estado basado en actividad del día
+        if metrics.commits == 0:
+            status = "Sin Actividad"
         else:
             status = "Activo"
         
@@ -133,8 +132,8 @@ class NotionClient:
                 "Username ": {
                     "rich_text": [{"text": {"content": metrics.username}}]
                 },
-                "Periodo": {
-                    "rich_text": [{"text": {"content": period}}]
+                "Fecha": {
+                    "date": {"start": record_date}
                 },
                 "Commits": {"number": metrics.commits},
                 "Lineas Agregadas ": {"number": metrics.lines_added},
@@ -147,7 +146,7 @@ class NotionClient:
                 "Dias Inactivo": {"number": metrics.days_since_last_commit},
                 "Estado ": {"select": {"name": status}},
                 "Score ": {"number": round(metrics.activity_score, 2)},
-                "Fecha Actualización": {
+                "Fecha Registro": {
                     "date": {"start": datetime.now().isoformat()}
                 }
             }
@@ -157,65 +156,28 @@ class NotionClient:
         response.raise_for_status()
         return response.json()
     
-    def update_page(self, page_id: str, metrics: Any, period: str) -> Dict:
-        """Actualiza página existente con nuevas métricas"""
-        url = f'{self.base_url}/pages/{page_id}'
-        
-        # Determinar estado
-        if metrics.days_since_last_commit > 7:
-            status = "Inactivo"
-        elif metrics.days_since_last_commit > 3:
-            status = "Alerta"
-        else:
-            status = "Activo"
-        
-        data = {
-            "properties": {
-                "Desarrollador": {
-                    "title": [{"text": {"content": metrics.name}}]
-                },
-                "Periodo": {
-                    "rich_text": [{"text": {"content": period}}]
-                },
-                "Commits": {"number": metrics.commits},
-                "Lineas Agregadas ": {"number": metrics.lines_added},
-                "Lineas Eliminadas ": {"number": metrics.lines_deleted},
-                "Lineas Total": {"number": metrics.lines_added + metrics.lines_deleted},
-                "Repos": {"number": len(metrics.repos_contributed)},
-                "Último Commit": {
-                    "date": {"start": metrics.last_commit_date.isoformat() if metrics.last_commit_date else datetime.now().isoformat()}
-                },
-                "Dias Inactivo": {"number": metrics.days_since_last_commit},
-                "Estado ": {"select": {"name": status}},
-                "Score ": {"number": round(metrics.activity_score, 2)},
-                "Fecha Actualización": {
-                    "date": {"start": datetime.now().isoformat()}
-                }
-            }
-        }
-        
-        response = requests.patch(url, headers=self.headers, json=data)
-        response.raise_for_status()
-        return response.json()
-    
-    def sync_developer_metrics(self, developers: Dict[str, Any], period: str):
-        """Sincroniza todas las métricas con Notion (crea o actualiza)"""
+    def append_daily_metrics(self, developers: Dict[str, Any], record_date: str):
+        """
+        Registra métricas diarias en Notion.
+        SIEMPRE crea nuevas filas, nunca actualiza existentes.
+        """
         synced = 0
         created = 0
-        updated = 0
         
         for username, metrics in developers.items():
-            page_id = self.find_page_by_username(username)
-            
             try:
-                if page_id:
-                    self.update_page(page_id, metrics, period)
-                    updated += 1
-                else:
-                    self.create_page(metrics, period)
-                    created += 1
+                # Siempre crear nueva página (nunca actualizar)
+                self.create_page(metrics, record_date)
+                created += 1
                 synced += 1
             except Exception as e:
-                print(f"Error sincronizando {username}: {e}")
+                print(f"Error registrando {username}: {e}")
         
-        return {'synced': synced, 'created': created, 'updated': updated}
+        return {'synced': synced, 'created': created}
+    
+    def sync_developer_metrics(self, developers: Dict[str, Any], period: str):
+        """
+        DEPRECATED: Usar append_daily_metrics() en su lugar.
+        Mantiene compatibilidad hacia atrás pero redirige a append_daily_metrics.
+        """
+        return self.append_daily_metrics(developers, period)

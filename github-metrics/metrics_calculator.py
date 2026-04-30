@@ -30,10 +30,24 @@ class DeveloperMetrics:
         return self.commits + (self.lines_added + self.lines_deleted) / 100
 
 class MetricsCalculator:
-    def __init__(self, days_back: int = 7):
-        self.days_back = days_back
-        self.since = datetime.now() - timedelta(days=days_back)
-        self.until = datetime.now()
+    def __init__(self, since: datetime = None, until: datetime = None, days_back: int = None):
+        """
+        Calcula métricas para un rango de fechas específico.
+        Si since/until no se proporcionan, usa days_back (comportamiento anterior).
+        """
+        if since and until:
+            self.since = since
+            self.until = until
+            self.days_back = (until - since).days
+        elif days_back:
+            self.days_back = days_back
+            self.since = datetime.now() - timedelta(days=days_back)
+            self.until = datetime.now()
+        else:
+            # Por defecto, día actual
+            self.until = datetime.now()
+            self.since = self.until.replace(hour=0, minute=0, second=0, microsecond=0)
+            self.days_back = 1
     
     def calculate_metrics(self, commits_data: List[Dict]) -> Dict[str, DeveloperMetrics]:
         """Calcula métricas por desarrollador desde lista de commits"""

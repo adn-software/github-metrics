@@ -11,10 +11,14 @@ from metrics_calculator import MetricsCalculator
 from notion_client import NotionClient
 from config import Config
 
-def collect_all_commits(github: GitHubClient, days_back: int) -> list:
-    """Recolecta commits de todos los repos de la organización"""
-    since = datetime.now() - timedelta(days=days_back)
-    until = datetime.now()
+def get_today_range():
+    """Retorna el rango de fechas para el día actual (desde 00:00 hasta ahora)"""
+    now = datetime.now()
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start_of_day, now
+
+def collect_all_commits(github: GitHubClient, since: datetime, until: datetime) -> list:
+    """Recolecta commits de todos los repos de la organización en un rango de fechas"""
     
     print(f"📁 Obteniendo repositorios de la organización '{github.org}'...")
     repos = github.get_org_repositories()
@@ -49,7 +53,7 @@ def collect_all_commits(github: GitHubClient, days_back: int) -> list:
     
     return all_commits
 
-def generate_report(developers: dict, calc: MetricsCalculator):
+def generate_report(developers: dict, calc: MetricsCalculator, report_date: str):
     """Genera reporte gerencial en consola"""
     print("\n" + "="*70)
     print("📊 REPORTE GERENCIAL - MÉTRICAS DE DESARROLLADORES")
@@ -57,7 +61,7 @@ def generate_report(developers: dict, calc: MetricsCalculator):
     
     # Estadísticas generales
     stats = calc.get_summary_stats(developers)
-    print(f"\n📈 Estadísticas del Equipo (últimos {stats['period_days']} días):")
+    print(f"\n📈 Estadísticas del Equipo - Día {report_date}:")
     print(f"   • Total desarrolladores activos: {stats['total_developers']}")
     print(f"   • Total commits: {stats['total_commits']}")
     print(f"   • Total líneas agregadas: {stats['total_lines_added']:,}")
@@ -66,32 +70,25 @@ def generate_report(developers: dict, calc: MetricsCalculator):
     print(f"   • Promedio commits por dev: {stats['avg_commits_per_dev']:.1f}")
     
     # Ranking por commits
-    print(f"\n🏆 TOP DESARROLLADORES POR COMMITS:")
+    print(f"\n🏆 TOP DESARROLLADORES POR COMMITS (HOY):")
     ranking = calc.get_ranking_by_commits(developers)
     for i, dev in enumerate(ranking[:10], 1):
-        status = "🟢" if dev.days_since_last_commit <= 3 else "🟡" if dev.days_since_last_commit <= 7 else "🔴"
-        print(f"   {i}. {status} {dev.name}: {dev.commits} commits | {dev.lines_added + dev.lines_deleted:,} líneas")
+        print(f"   {i}. {dev.name}: {dev.commits} commits | {dev.lines_added + dev.lines_deleted:,} líneas")
     
     # Ranking por líneas de código
-    print(f"\n💻 TOP DESARROLLADORES POR LÍNEAS DE CÓDIGO:")
+    print(f"\n💻 TOP DESARROLLADORES POR LÍNEAS DE CÓDIGO (HOY):")
     ranking_lines = calc.get_ranking_by_lines(developers)
     for i, dev in enumerate(ranking_lines[:10], 1):
         print(f"   {i}. {dev.name}: {dev.lines_added + dev.lines_deleted:,} líneas ({dev.lines_added:,}+ / {dev.lines_deleted:,}-)")
     
-    # Alertas de inactividad
-    inactive = calc.get_inactive_developers(developers, Config.INACTIVITY_THRESHOLD_DAYS)
-    if inactive:
-        print(f"\n⚠️  ALERTAS DE INACTIVIDAD (> {Config.INACTIVITY_THRESHOLD_DAYS} días sin commits):")
-        for dev in inactive:
-            print(f"   🔴 {dev.name}: {dev.days_since_last_commit} días inactivo | Último commit: {dev.last_commit_date.strftime('%Y-%m-%d') if dev.last_commit_date else 'N/A'}")
-    else:
-        print(f"\n✅ No hay desarrolladores inactivos (todos han hecho commits en los últimos {Config.INACTIVITY_THRESHOLD_DAYS} días)")
+    print(f"\n✅ Reporte del día {report_date} completado.")
     
     print("\n" + "="*70)
 
 def main():
-    print("🚀 Iniciando sincronización de métricas de desarrolladores...")
-    print(f"📅 Período de análisis: últimos {Config.DAYS_BACK} días\n")
+    print("🚀 Iniciando registro diario de métricas de desarrolladores...")
+    today = datetime.now().strftime('%Y-%m-%d')
+    print(f"📅 Fecha de registro: {today}\n")
     
     # Validar configuración
     try:
@@ -104,12 +101,15 @@ def main():
     # Inicializar clientes
     github = GitHubClient()
     notion = NotionClient()
-    calc = MetricsCalculator(days_back=Config.DAYS_BACK)
     
-    # Recolectar datos de GitHub
+    # Obtener rango del día actual
+    since, until = get_today_range()
+    calc = MetricsCalculator(since=since, until=until)
+    
+    # Recolectar datos de GitHub del día actual
     try:
-        all_commits = collect_all_commits(github, Config.DAYS_BACK)
-        print(f"\n📊 Total commits recolectados: {len(all_commits)}")
+        all_commits = collect_all_commits(github, since, until)
+        print(f"\n📊 Total commits recolectados hoy: {len(all_commits)}")
     except Exception as e:
         print(f"❌ Error al obtener datos de GitHub: {e}")
         sys.exit(1)
@@ -123,17 +123,15 @@ def main():
         sys.exit(0)
     
     # Generar reporte en consola
-    generate_report(developers, calc)
+    generate_report(developers, calc, today)
     
-    # Sincronizar con Notion
-    print("\n🔄 Sincronizando con Notion...")
+    # Sincronizar con Notion (siempre crear nuevos registros, nunca actualizar)
+    print("\n🔄 Registrando métricas diarias en Notion...")
     try:
-        period_str = f"{calc.since.strftime('%Y-%m-%d')} a {calc.until.strftime('%Y-%m-%d')}"
-        result = notion.sync_developer_metrics(developers, period_str)
-        print(f"✅ Sincronización completada:")
-        print(f"   • Páginas creadas: {result['created']}")
-        print(f"   • Páginas actualizadas: {result['updated']}")
-        print(f"   • Total sincronizado: {result['synced']}")
+        result = notion.append_daily_metrics(developers, today)
+        print(f"✅ Registro diario completado:")
+        print(f"   • Nuevas filas creadas: {result['created']}")
+        print(f"   • Total desarrolladores registrados: {result['synced']}")
     except Exception as e:
         print(f"❌ Error al sincronizar con Notion: {e}")
         import traceback
