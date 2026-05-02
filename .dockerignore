@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Documentación
+README.md
+*.md
+
+# Logs
+logs/
+*.log
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Railway
+.railway/
