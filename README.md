@@ -1,163 +1,246 @@
-# Apache Superset en Railway
+# Dashboard de Métricas CTO - GitHub + Supabase
 
-Configuración lista para desplegar Apache Superset en Railway.
+Sistema de extracción y visualización de métricas de desarrollo para gestión de equipos AI-First.
 
-## 📋 Requisitos Previos
+## 🎯 Métricas implementadas
 
-1. Cuenta en [Railway](https://railway.app)
-2. Base de datos PostgreSQL (Railway la crea automáticamente)
-3. Instancia Redis (opcional, para caché y Celery)
-4. Proyecto conectado a un repositorio Git
+| Métrica | Descripción | API GitHub |
+|---------|-------------|------------|
+| **Commits** | Total de commits diarios | Events API |
+| **Líneas de código** | Additions/deletions (volumen IA) | Commits API |
+| **Repos tocados** | Diferentes proyectos activos | Events API |
+| **Issues cerrados** | Throughput de entregas | Search Issues API |
+| **Lead time** | Horas desde creación a cierre de Issue | Search Issues API |
+| **Días inactivo** | Tiempo desde última actividad | Events API |
 
-## 🚀 Pasos de Despliegue
-
-### 1. Generar SECRET_KEY
-
-Antes de desplegar, necesitas generar una secret key:
-
-```bash
-openssl rand -base64 42
-```
-
-Guarda este valor, lo usarás en las variables de entorno.
-
-### 2. Configurar Variables de Entorno
-
-En el dashboard de Railway, configura estas variables:
-
-#### Requeridas:
-
-| Variable | Descripción | Ejemplo |
-|----------|-------------|---------|
-| `SUPERSET_SECRET_KEY` | Clave secreta generada | `abc123...` |
-| `DATABASE_URL` | URL de PostgreSQL (Railway la provee) | `postgresql://...` |
-| `CREATE_ADMIN_USER` | Crear usuario admin al iniciar | `true` |
-| `ADMIN_USERNAME` | Nombre de usuario admin | `admin` |
-| `ADMIN_PASSWORD` | Contraseña admin | `tu-password-segura` |
-| `ADMIN_EMAIL` | Email del admin | `admin@tu-empresa.com` |
-
-#### Opcionales:
-
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `REDIS_URL` | URL de Redis para caché | `redis://localhost:6379/0` |
-| `LOG_LEVEL` | Nivel de logging | `INFO` |
-| `SUPERSET_LOAD_EXAMPLES` | Cargar dashboards de ejemplo | `no` |
-| `CACHE_TIMEOUT` | Timeout de caché en segundos | `300` |
-| `QUERY_CACHE_TIMEOUT` | Timeout de caché de queries | `3600` |
-| `ROW_LIMIT` | Límite de filas en consultas | `50000` |
-| `APP_NAME` | Nombre de la aplicación | `Superset` |
-| `BABEL_DEFAULT_LOCALE` | Idioma por defecto | `es` |
-
-### 3. Desplegar
-
-1. Conecta tu repositorio a Railway
-2. Railway detectará automáticamente el Dockerfile
-3. El despliegue se ejecutará automáticamente
-
-### 4. Inicializar (Primera vez)
-
-Para la primera ejecución, asegúrate de tener:
-
-```
-CREATE_ADMIN_USER=true
-SKIP_DB_INIT=false
-SKIP_INIT=false
-```
-
-Una vez que el admin esté creado, puedes cambiar a:
-
-```
-CREATE_ADMIN_USER=false
-SKIP_DB_INIT=true
-SKIP_INIT=true
-```
-
-## 🔗 Conectar a Supabase
-
-Para conectar Superset a tu base de datos de Supabase:
-
-1. Obtén la URL de conexión de Supabase (Settings > Database > Connection string)
-2. En Superset, ve a **Settings > Database Connections > + Database**
-3. Selecciona **PostgreSQL**
-4. Configura:
-   - Host: `db.xxxxxx.supabase.co`
-   - Port: `5432`
-   - Database: `postgres`
-   - Username: `postgres`
-   - Password: `[tu-password]`
-   - SSL: Activado
-
-## 📊 Dashboards Pre-configurados
-
-Una vez conectado a Supabase, puedes crear datasets y dashboards para:
-
-- Métricas de desarrolladores
-- PRs mergeados vs abiertos
-- Tiempo promedio de merge
-- Issues resueltos
-- KPIs de productividad
-
-## 🛠️ Comandos Útiles
-
-### Acceder al shell de Superset
+## 🚀 Instalación
 
 ```bash
-railway run bash
-superset shell
+# 1. Instalar dependencias
+npm install
+
+# 2. Crear archivo .env con tus credenciales
+cp .env.example .env
+# Editar .env con tus credenciales
+
+# 3. Crear tablas en Supabase (SQL Editor > New query)
+# Copiar y ejecutar el contenido de schema.sql
 ```
 
-### Actualizar base de datos manualmente
+## ⚙️ Configuración
+
+Edita `.env` con tus credenciales:
+
+```env
+SUPABASE_URL=https://wolzdaitdgcepohnrewm.supabase.co
+SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_KEY=tu-service-key
+GITHUB_TOKEN=ghp_tu_token_github
+GITHUB_ORG=tu-organizacion  # Opcional
+```
+
+### Obtener GitHub Token
+1. GitHub > Settings > Developer settings > Personal access tokens > Tokens (classic)
+2. Generate new token (classic)
+3. Scopes requeridos: `repo`, `read:org`, `read:user`
+
+## 📊 Uso
+
+### 1. Agregar desarrolladores
 
 ```bash
-railway run bash
-superset db upgrade
-superset init
+node seed-developers.js
 ```
 
-### Ver logs
+Interactivamente agrega los GitHub usernames de tu equipo.
+
+### 2. Ejecutar extracción de métricas
 
 ```bash
-railway logs
+# Extracción del día actual
+node github-extractor.js
+
+# Extracción de fecha específica
+node github-extractor.js 2026-04-30
 ```
+
+### 3. Configurar ejecución diaria (cron)
+
+```bash
+# Editar crontab
+crontab -e
+
+# Agregar línea para ejecutar todos los días a las 9 AM
+0 9 * * * cd /ruta/al/proyecto && node github-extractor.js >> logs/extraction.log 2>&1
+```
+
+## 🗄️ Estructura de Datos
+
+### Tablas Principales
+| Tabla | Columnas Clave |
+|-------|----------------|
+| `developers` | `id`, `github_username`, `full_name`, `is_active` |
+| `daily_metrics` | `developer_id`, `date`, `commits_count`, `lines_added`, `lines_deleted`, `repos_touched`, `issues_closed`, `avg_lead_time_h`, `days_inactive`, `last_activity_at` |
+| `extraction_logs` | Logs de cada ejecución del extractor |
+
+### Vistas para Dashboard (7 Widgets)
+
+| Vista | Propósito | Widget Recomendado |
+|-------|-----------|-------------------|
+| `vw_bench_watch` | Radar de Disponibilidad | Tabla con semáforo |
+| `vw_throughput_daily` | Velocidad de Entrega | Gráfico de barras |
+| `vw_velocity_by_dev` | Eficiencia por dev | Gauge Chart |
+| `vw_code_volume_daily` | Volumen de código | Stacked Area Chart |
+| `vw_focus_index` | Índice de Foco | Bubble Chart |
+| `vw_commit_pulse` | Consistencia de Flujo | GitHub-style Calendar |
+| `vw_weekly_dev_performance` | Performance Semanal | Tabla resumen |
+
+### Funciones RPC
+
+```sql
+-- Calcular score de desarrollador (0-100)
+SELECT * FROM calcular_score_desarrollador('uuid-dev', '2026-05-01');
+
+-- Detectar desarrolladores en riesgo
+SELECT * FROM detectar_desarrolladores_riesgo(3);
+```
+
+## 📊 Dashboard Next.js
+
+### Instalación del Frontend
+
+```bash
+cd dashboard
+npm install
+# Librerías recomendadas: tremor, recharts, @supabase/supabase-js
+```
+
+### Queries para cada Widget
+
+```javascript
+// 1. Radar de Disponibilidad (Bench Watch)
+const { data } = await supabase
+  .from('vw_bench_watch')
+  .select('*');
+
+// 2. Throughput Diario
+const { data } = await supabase
+  .from('vw_throughput_daily')
+  .select('*')
+  .limit(30);
+
+// 3. Score de Desarrollador
+const { data } = await supabase
+  .rpc('calcular_score_desarrollador', { 
+    dev_id: 'uuid-del-dev',
+    fecha_hasta: '2026-05-01'
+  });
+
+// 4. Alertas de Riesgo
+const { data } = await supabase
+  .rpc('detectar_desarrolladores_riesgo', { dias_limite: 3 });
+```
+
+## ⚡ Edge Function (Opcional)
+
+Para ejecutar el extractor automáticamente en Supabase sin servidor externo:
+
+```bash
+# Deploy Edge Function
+supabase functions deploy github-extractor
+
+# Configurar cron job (ejecuta cada día a las 9 AM)
+supabase functions schedule create github-extractor --cron '0 9 * * *'
+```
+
+La Edge Function está en: `supabase/functions/github-extractor/`
+
+## 📈 Queries SQL Útiles
+
+```sql
+-- Métricas de hoy con semáforo de status
+SELECT 
+  github_username,
+  days_inactive,
+  CASE 
+    WHEN days_inactive > 2 THEN '🔴 CRÍTICO'
+    WHEN days_inactive = 2 THEN '🟠 ALTO'
+    WHEN days_inactive = 1 THEN '🟡 MEDIO'
+    ELSE '🟢 ACTIVO'
+  END as status
+FROM vw_bench_watch;
+
+-- Performance semanal completa
+SELECT * FROM vw_weekly_dev_performance;
+
+-- Historial de extracciones
+SELECT * FROM extraction_logs ORDER BY extraction_date DESC LIMIT 10;
+
+-- Comparativa de velocidad (lead time promedio)
+SELECT 
+  full_name,
+  velocity_avg_h,
+  total_tasks
+FROM vw_weekly_dev_performance
+ORDER BY velocity_avg_h ASC;
+```
+
+## 📁 Archivos
+
+| Archivo | Descripción |
+|---------|-------------|
+| `supabase.js` | Cliente Supabase configurado |
+| `github-extractor-enhanced.js` | **Script completo con Issues y labels** |
+| `github-extractor.js` | Script legacy (solo métricas de código) |
+| `seed-developers.js` | Gestión de desarrolladores |
+| `schema-final.sql` | **⭐ Schema completo recomendado** |
+| `schema-enhanced.sql` | Schema con vistas y funciones RPC |
+| `schema-kpis-gerenciales.sql` | KPIs gerenciales adicionales |
+| `schema.sql` | Estructura básica (legacy) |
+| `explore.js` | Utilidad de exploración |
+| `setup-db.js` | Verificación de configuración |
+| `GUIA-KPIS-GERENCIALES.md` | Guía de uso de KPIs ejecutivos |
+| `supabase/functions/github-extractor/` | Edge Function para ejecución automática |
 
 ## 🔒 Seguridad
 
-- **Nunca** expongas `SUPERSET_SECRET_KEY` en el código
-- Usa HTTPS en producción (`SESSION_COOKIE_SECURE=true`)
-- Configura CORS apropiadamente (`CORS_ORIGINS`)
-- Desactiva el registro público de usuarios
+- **Nunca compartas** el archivo `.env`
+- Usa el `SUPABASE_SERVICE_KEY` **solo** en backend/Edge Functions
+- El `GITHUB_TOKEN` tiene acceso de lectura a tus repos privados
+- **RLS habilitado** en tablas para producción
+- Política actual: usuarios autenticados ven todo (para admin/CTO)
+- Para restringir (devs ven solo sus datos), modificar políticas RLS
 
-## 📁 Estructura de Archivos
+## 📊 KPIs Gerenciales (Para Reuniones Ejecutivas)
 
+Implementados **5 KPIs clave** para presentar a gerencia/dirección:
+
+| KPI | Función RPC | Meta |
+|-----|-------------|------|
+| 1. Throughput Semanal | `kpi_throughput_comparativo()` | Incremental |
+| 2. Time-to-Market | `kpi_lead_time_vs_meta(24)` | < 24h |
+| 3. Project Mix | `vw_kpi_project_mix` | Según prioridades |
+| 4. Tasa de Retrabajo | `kpi_analisis_calidad()` | < 10% |
+| 5. Utilización Equipo | `kpi_reporte_capacidad()` | > 85% |
+
+### Reporte Ejecutivo Completo
+```javascript
+const { data } = await supabase.rpc('generar_reporte_ejecutivo');
 ```
-superset-railway/
-├── Dockerfile          # Configuración del contenedor
-├── superset_config.py  # Configuración de Superset
-├── entrypoint.sh       # Script de inicio
-└── README.md          # Esta guía
-```
 
-## 🐛 Troubleshooting
+Ver **GUIA-KPIS-GERENCIALES.md** para detalles completos.
 
-### Error: "SECRET_KEY is required"
+## 🎯 Roadmap Dashboard CTO
 
-Genera y configura la variable `SUPERSET_SECRET_KEY`.
-
-### Error de conexión a base de datos
-
-Verifica que `DATABASE_URL` esté correctamente configurada. Railway debe proveerla automáticamente.
-
-### Error: "Role already exists"
-
-El usuario admin ya existe. Cambia `CREATE_ADMIN_USER` a `false`.
-
-### Timeout en consultas grandes
-
-Aumenta `SQLLAB_TIMEOUT` y `SUPERSET_WEBSERVER_TIMEOUT`.
-
-## 📚 Recursos
-
-- [Documentación oficial de Superset](https://superset.apache.org/docs/)
-- [Railway Documentation](https://docs.railway.app/)
-- [SQLAlchemy URI Format](https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls)
+- [x] Extracción de métricas GitHub
+- [x] Almacenamiento en series de tiempo (Supabase)
+- [x] Funciones RPC para cálculos complejos
+- [x] Vistas SQL para 7 widgets técnicos
+- [x] KPIs gerenciales (5 indicadores ejecutivos)
+- [x] Edge Function para ejecución automática
+- [ ] Frontend Next.js con los 7 widgets + 5 KPIs
+- [ ] Captura de datos por proyecto (Project Mix)
+- [ ] Clasificación de Issues (Rework Rate)
+- [ ] Autenticación y permisos granulares
+- [ ] Alertas automáticas (Slack/Email) para devs inactivos
+- [ ] Predicciones con ML (tendencias de velocidad)

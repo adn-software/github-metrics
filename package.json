@@ -1,0 +1,24 @@
+{
+  "name": "metrics-supabase",
+  "version": "1.0.0",
+  "description": "Conexión a Supabase con JavaScript/Node.js",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "setup": "node setup-automatico.js",
+    "extract": "node github-extractor-enhanced.js",
+    "extract:date": "node github-extractor-enhanced.js",
+    "extract:historic": "node extract-historic.js",
+    "extract:legacy": "node github-extractor.js",
+    "seed": "node seed-developers.js",
+    "explore": "node explore.js",
+    "alerts": "node check-alerts.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^16.4.7",
+    "octokit": "^4.1.2",
+    "date-fns": "^4.1.0"
+  }
+}

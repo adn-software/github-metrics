@@ -1,0 +1,6 @@
+[functions.github-extractor]
+enabled = true
+verify_jwt = false
+
+[functions.github-extractor.schedule]
+cron = "0 9 * * *"
