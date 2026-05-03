@@ -3,12 +3,29 @@ set -e
 
 echo "🚀 Iniciando Apache Superset..."
 
+# Instalar psycopg2-binary en runtime si no está disponible
+echo "📦 Verificando e instalando dependencias..."
+python -c "import psycopg2" 2>/dev/null || {
+    echo "   psycopg2 no encontrado, instalando..."
+    pip install --user psycopg2-binary==2.9.9 -q
+}
+
+# Exportar PYTHONPATH para incluir user site-packages
+export PYTHONPATH="$HOME/.local/lib/python3.10/site-packages:$PYTHONPATH"
+echo "   PYTHONPATH: $PYTHONPATH"
+
 # Esperar a que la base de datos esté lista
 echo "⏳ Esperando conexión a base de datos..."
 python << 'PYTHON_SCRIPT'
 import time
 import sys
 import os
+
+# Agregar user site-packages al path
+import site
+user_site = site.getusersitepackages()
+if user_site not in sys.path:
+    sys.path.insert(0, user_site)
 
 try:
     from sqlalchemy import create_engine
@@ -40,7 +57,7 @@ while retry_count < max_retries:
         sys.exit(0)
     except ImportError as e:
         print(f"❌ Error de importación: {str(e)}")
-        print("   Instalando dependencias...")
+        print("   Reiniciando contenedor para aplicar dependencias...")
         sys.exit(1)
     except Exception as e:
         retry_count += 1

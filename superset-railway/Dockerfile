@@ -2,7 +2,7 @@ FROM apache/superset:latest
 
 USER root
 
-# Cache bust: 2026-05-03-004 - Fix user permissions for psycopg2
+# Cache bust: 2026-05-03-005 - Runtime psycopg2 install with PYTHONPATH
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath
