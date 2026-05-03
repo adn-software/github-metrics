@@ -2,12 +2,14 @@ FROM apache/superset:latest
 
 USER root
 
-# Instalar dependencias para PostgreSQL y Redis
-RUN pip install --no-cache-dir \
-    psycopg2-binary \
-    redis \
-    celery \
-    gunicorn
+# Actualizar pip e instalar dependencias
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir \
+    psycopg2-binary==2.9.9 \
+    redis==5.0.0 \
+    celery==5.3.0 \
+    gunicorn==21.2.0 \
+    sqlalchemy==1.4.49
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath
