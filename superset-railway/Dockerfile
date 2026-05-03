@@ -2,7 +2,7 @@ FROM apache/superset:latest
 
 USER root
 
-# Cache bust: 2026-05-03-001 - Forzar fresh build
+# Cache bust: 2026-05-03-002 - Fix psycopg2 import verification
 
 # Actualizar pip e instalar dependencias
 RUN pip install --upgrade pip && \
@@ -12,7 +12,7 @@ RUN pip install --upgrade pip && \
     celery==5.3.0 \
     gunicorn==21.2.0 \
     sqlalchemy==1.4.49 && \
-    python -c "import psycopg2; print('psycopg2 OK')"
+    python -c "import psycopg2._psycopg; print('✅ psycopg2-binary installed successfully')"
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath
