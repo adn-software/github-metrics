@@ -2,7 +2,7 @@ FROM apache/superset:latest
 
 USER root
 
-# Cache bust: 2026-05-03-005 - Runtime psycopg2 install with PYTHONPATH
+# Cache bust: 2026-05-03-006 - Fix BABEL_DEFAULT_LOCALE parsing
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath

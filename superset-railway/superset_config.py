@@ -184,6 +184,9 @@ APP_NAME = os.environ.get("APP_NAME", "Superset")
 
 # Idioma
 BABEL_DEFAULT_LOCALE = os.environ.get("BABEL_DEFAULT_LOCALE", "es")
+# Limpiar valor si tiene caracteres inválidos (ej: "=es" -> "es")
+if BABEL_DEFAULT_LOCALE and not BABEL_DEFAULT_LOCALE[0].isalpha():
+    BABEL_DEFAULT_LOCALE = BABEL_DEFAULT_LOCALE.lstrip('=')
 BABEL_DEFAULT_FOLDER = "translations"
 LANGUAGES = {
     "en": {"flag": "us", "name": "English"},
