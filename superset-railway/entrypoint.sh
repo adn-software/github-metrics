@@ -1,6 +1,21 @@
 #!/bin/bash
 set -e
 
+# Función para limpiar variables que pueden tener '=' como prefijo
+clean_env_var() {
+    local value="${!1}"
+    if [[ "$value" == =* ]]; then
+        value="${value:1}"
+    fi
+    echo "$value"
+}
+
+# Limpiar variables de Gunicorn que pueden tener '='
+GUNICORN_WORKERS=$(clean_env_var "GUNICORN_WORKERS")
+GUNICORN_THREADS=$(clean_env_var "GUNICORN_THREADS")
+GUNICORN_TIMEOUT=$(clean_env_var "GUNICORN_TIMEOUT")
+GUNICORN_WORKER_CLASS=$(clean_env_var "GUNICORN_WORKER_CLASS")
+
 echo "🚀 Iniciando Apache Superset..."
 
 # Instalar psycopg2-binary en runtime si no está disponible
@@ -105,12 +120,13 @@ if [ -z "$1" ]; then
     # Modo producción con gunicorn (recomendado para Railway)
     if [ "${USE_GUNICORN}" != "false" ]; then
         echo "🌐 Iniciando servidor de producción (Gunicorn) en puerto ${PORT:-8088}..."
+        echo "   Workers: ${GUNICORN_WORKERS:-4}, Threads: ${GUNICORN_THREADS:-2}, Timeout: ${GUNICORN_TIMEOUT:-120}"
         exec gunicorn \
             --bind 0.0.0.0:${PORT:-8088} \
-            --workers ${GUNICORN_WORKERS:-4} \
-            --worker-class ${GUNICORN_WORKER_CLASS:-gthread} \
-            --threads ${GUNICORN_THREADS:-2} \
-            --timeout ${GUNICORN_TIMEOUT:-120} \
+            --workers "${GUNICORN_WORKERS:-4}" \
+            --worker-class "${GUNICORN_WORKER_CLASS:-gthread}" \
+            --threads "${GUNICORN_THREADS:-2}" \
+            --timeout "${GUNICORN_TIMEOUT:-120}" \
             --limit-request-line 0 \
             --limit-request-field_size 0 \
             --access-logfile - \

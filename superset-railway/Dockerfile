@@ -2,7 +2,7 @@ FROM apache/superset:latest
 
 USER root
 
-# Cache bust: 2026-05-03-007 - Fix blueprint name conflict
+# Cache bust: 2026-05-03-008 - Fix Gunicorn env var parsing
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath
