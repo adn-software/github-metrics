@@ -200,11 +200,12 @@ DRUID_IS_ACTIVE = False
 # HEALTHCHECK ENDPOINT (Para Railway)
 # =============================================================================
 from flask import Blueprint
-health_bp = Blueprint('health', __name__)
+# Usar nombre único para evitar conflicto con healthcheck interno de Superset
+railway_health_bp = Blueprint('railway_health', __name__)
 
-@health_bp.route('/health')
+@railway_health_bp.route('/health')
 def health_check():
     return {'status': 'healthy'}, 200
 
-BLUEPRINTS = [health_bp]
+BLUEPRINTS = [railway_health_bp]
 

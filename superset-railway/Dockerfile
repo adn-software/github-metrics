@@ -2,7 +2,7 @@ FROM apache/superset:latest
 
 USER root
 
-# Cache bust: 2026-05-03-006 - Fix BABEL_DEFAULT_LOCALE parsing
+# Cache bust: 2026-05-03-007 - Fix blueprint name conflict
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath
