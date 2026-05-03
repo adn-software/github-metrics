@@ -3,36 +3,63 @@ set -e
 
 echo "🚀 Iniciando Apache Superset..."
 
+# Instalar psycopg2 si no está disponible (workaround para Railway)
+echo "📦 Verificando dependencias..."
+python -c "import psycopg2" 2>/dev/null || {
+    echo "   Instalando psycopg2-binary..."
+    pip install --user psycopg2-binary==2.9.9 -q
+}
+
 # Esperar a que la base de datos esté lista
 echo "⏳ Esperando conexión a base de datos..."
-python << END
+python << 'PYTHON_SCRIPT'
 import time
 import sys
-from sqlalchemy import create_engine
 import os
+
+try:
+    from sqlalchemy import create_engine
+except ImportError as e:
+    print(f"❌ Error importando SQLAlchemy: {e}")
+    sys.exit(1)
 
 max_retries = 30
 retry_count = 0
 db_url = os.environ.get('DATABASE_URL', os.environ.get('SQLALCHEMY_DATABASE_URI'))
 
-if db_url and db_url.startswith('postgres://'):
+if not db_url:
+    print("❌ Error: DATABASE_URL no está configurada")
+    sys.exit(1)
+
+# Convertir postgres:// a postgresql:// para SQLAlchemy
+if db_url.startswith('postgres://'):
     db_url = db_url.replace('postgres://', 'postgresql://', 1)
+
+print(f"   Conectando a: {db_url.split('@')[-1] if '@' in db_url else 'database'}")
 
 while retry_count < max_retries:
     try:
         engine = create_engine(db_url)
         connection = engine.connect()
+        result = connection.execute("SELECT 1")
         connection.close()
         print("✅ Base de datos conectada")
         sys.exit(0)
+    except ImportError as e:
+        print(f"❌ Error de importación: {str(e)}")
+        print("   Instalando dependencias...")
+        sys.exit(1)
     except Exception as e:
         retry_count += 1
-        print(f"⏳ Intento {retry_count}/{max_retries}... {str(e)}")
+        error_msg = str(e)
+        if len(error_msg) > 100:
+            error_msg = error_msg[:100] + "..."
+        print(f"⏳ Intento {retry_count}/{max_retries}... {error_msg}")
         time.sleep(2)
 
 print("❌ No se pudo conectar a la base de datos")
 sys.exit(1)
-END
+PYTHON_SCRIPT
 
 # Inicializar base de datos si no existe
 if [ "${SKIP_DB_INIT}" != "true" ]; then

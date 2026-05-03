@@ -2,6 +2,8 @@ FROM apache/superset:latest
 
 USER root
 
+# Cache bust: 2026-05-03-001 - Forzar fresh build
+
 # Actualizar pip e instalar dependencias
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir \
@@ -9,7 +11,8 @@ RUN pip install --upgrade pip && \
     redis==5.0.0 \
     celery==5.3.0 \
     gunicorn==21.2.0 \
-    sqlalchemy==1.4.49
+    sqlalchemy==1.4.49 && \
+    python -c "import psycopg2; print('psycopg2 OK')"
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath
