@@ -11,8 +11,7 @@ RUN pip install --upgrade pip && \
     redis==5.0.0 \
     celery==5.3.0 \
     gunicorn==21.2.0 \
-    sqlalchemy==1.4.49 && \
-    python -c "import psycopg2._psycopg; print('✅ psycopg2-binary installed successfully')"
+    sqlalchemy==1.4.49
 
 # Crear directorio para configuración
 RUN mkdir -p /app/pythonpath

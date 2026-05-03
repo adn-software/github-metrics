@@ -3,13 +3,6 @@ set -e
 
 echo "🚀 Iniciando Apache Superset..."
 
-# Instalar psycopg2 si no está disponible (workaround para Railway)
-echo "📦 Verificando dependencias..."
-python -c "import psycopg2" 2>/dev/null || {
-    echo "   Instalando psycopg2-binary..."
-    pip install --user psycopg2-binary==2.9.9 -q
-}
-
 # Esperar a que la base de datos esté lista
 echo "⏳ Esperando conexión a base de datos..."
 python << 'PYTHON_SCRIPT'
