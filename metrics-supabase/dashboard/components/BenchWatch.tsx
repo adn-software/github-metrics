@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase, BenchWatch } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { BenchWatch } from '@/lib/supabase'
 import { Activity, User, AlertCircle } from 'lucide-react'
 
 export default function BenchWatch() {
